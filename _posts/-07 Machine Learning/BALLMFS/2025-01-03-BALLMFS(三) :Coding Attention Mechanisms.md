@@ -55,6 +55,9 @@ It is introduced in papar [Attention is All You Need](https://arxiv.org/abs/1706
 
 
 
+{% highlight python linenos %}
+{% endhighlight %}
+
 
 ## 6 参考资料 ##
 - [Deep Learning](https://book.douban.com/subject/26883982/);

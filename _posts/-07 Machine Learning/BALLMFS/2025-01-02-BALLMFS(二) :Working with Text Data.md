@@ -18,43 +18,84 @@ shortinfo: BALLMFS(二) :Working with Text Data
 ---
 {:.hr-short-left}
 
-## 1 Understanding Large Language Models ##
-
-### 1.1 What is transformer
-> **Transformer**: consists of two main parts:
-1. Encoder: Processes the input sequence.
-2. Decoder: Generates the output sequence (used in tasks like translation).
-
-However, in models like GPT (Generative Pre-trained Transformer), only the decoder is used, while in models like BERT (Bidirectional Encoder Representations from Transformers), only the encoder is used.
-
-It is introduced in papar [Attention is All You Need](https://arxiv.org/abs/1706.03762).
-
-{: .img_middle_mid}
-![Transformer]({{site.url}}/assets/images/posts/-07_Machine Learning/BALLMFS/2025-01-01-BALLMFS(一) :Understanding Large Language Models/Transformer.jpg)
+## 1. Tokenize and Embedding ##
 
 
-### 1.2 What is GPT
-
-> **GPT**: Generative Pretrained Transformer, introduced in [improving Language Understanding by Generative Pre-Training (2018) by Radford et al.](http://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf), good at simple next-word prediction task.
-
-> **GPT-3**: GPT-3 is a scaled-up version of this model that has more parameters and was trained on a larger dataset
-
-> **InstructGPT**: Finetuning with Human Feedback To Follow Instructions based upon GPT-3, can carry out other tasks such as spelling correction, classification, or language translation.
-
-> **Emergent Behavior**: GPT is not trained and designed for translation but only for next-word prediction. It turns out that the fact that GPT is good at translation task. This capability isn't explicitly taught during training but emerges as a natural consequence of the model's exposure to vast quantities of multilingual data in diverse context
-
-{: .img_middle_mid}
-![GPT]({{site.url}}/assets/images/posts/-07_Machine Learning/BALLMFS/2025-01-01-BALLMFS(一) :Understanding Large Language Models/GPT.jpg)
-
-
-### 1.3 Let's build GPT from scrach
+Work Flow
 
 {: .img_middle_lg}
-![Steps]({{site.url}}/assets/images/posts/-07_Machine Learning/BALLMFS/2025-01-01-BALLMFS(一) :Understanding Large Language Models/Steps.jpg)
+![Transformer]({{site.url}}/assets/images/posts/-07_Machine Learning/BALLMFS/2025-01-02-BALLMFS(二) :Working with Text Data/WorkFlow.jpg)
 
 
+Detail
+
+{: .img_middle_lg}
+![Transformer]({{site.url}}/assets/images/posts/-07_Machine Learning/BALLMFS/2025-01-02-BALLMFS(二) :Working with Text Data/TokenizationAndEmbedding.jpg)
 
 
+## Appendix A
+
+### A.1 Dataset
+{% highlight python linenos %}
+# datasets: enumerator over data records
+import torch
+from torch.utils.data import Dataset, DataLoader
+class GPTDatasetV1(Dataset):
+    def __init__(self, txt, tokenizer, max_length, stride):
+        self.input_ids = []
+        self.target_ids = []
+        token_ids = tokenizer.encode(txt)                         
+        for i in range(0, len(token_ids) - max_length, stride):   
+            input_chunk = token_ids[i:i + max_length]
+            target_chunk = token_ids[i + 1: i + max_length + 1]
+            self.input_ids.append(torch.tensor(input_chunk))
+            self.target_ids.append(torch.tensor(target_chunk))
+    def __len__(self):                                            
+        return len(self.input_ids)
+    def __getitem__(self, idx):                                   
+        return self.input_ids[idx], self.target_ids[idx]
+
+{% endhighlight %}
+
+
+### A.2 Dataloader
+{% highlight python linenos %}
+# dataloader: manage the batch over dataset's records for training
+def create_dataloader_v1(txt, batch_size=4, max_length=256, stride=128, shuffle=True, drop_last=True, num_workers=0):
+    tokenizer = tiktoken.get_encoding("gpt2")                   
+    dataset = GPTDatasetV1(txt, tokenizer, max_length, stride)    
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,                                      
+        num_workers=0                                             
+    )
+    return dataloader
+{% endhighlight %}
+
+### A.3 position and integration
+
+{% highlight python linenos %}
+
+# position: position is important for maintaning the position info for words
+
+with open("the-verdict.txt", "r", encoding="utf-8") as f:
+    raw_text = f.read()
+
+dataloader = create_dataloader_v1(raw_text, batch_size=8, max_length=4, stride=4)
+
+context_length = max_length
+pos_embedding_layer = torch.nn.Embedding(context_length, output_dim)
+pos_embeddings = pos_embedding_layer(torch.arange(context_length))
+print(pos_embeddings.shape)
+
+input_embeddings = token_embeddings + pos_embeddings
+print(input_embeddings.shape)
+
+{% endhighlight %}
+
+a
 
 ## 6 参考资料 ##
 - [Deep Learning](https://book.douban.com/subject/26883982/);
